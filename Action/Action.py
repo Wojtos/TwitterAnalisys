@@ -1,3 +1,3 @@
 class Action:
     def execute(self):
-        pass
+        return None

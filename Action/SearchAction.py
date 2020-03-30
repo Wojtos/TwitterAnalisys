@@ -39,7 +39,7 @@ class SearchAction(Action):
                 statistics.until = statistics.until + timedelta(days=1)
                 print(statistics.until)
 
-        except TwitterSearchException as e:
+        except Exception as e:
             print(e)
             return statistics
 

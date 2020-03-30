@@ -18,3 +18,4 @@ class AddSearchAction(Action):
             lang=self.lang
         )
         TwitterDB.instance.add_search(search)
+        return search
