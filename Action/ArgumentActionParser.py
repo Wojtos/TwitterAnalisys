@@ -3,7 +3,7 @@ from datetime import datetime, date, timedelta
 
 from Action.ActionParser import ActionParser
 from Action.AddSearchAction import AddSearchAction
-from Action.RunAction import RunAction
+from Action.RunSearchAction import RunSearchAction
 from Action.SearchAction import SearchAction
 
 
@@ -39,8 +39,8 @@ class ArgumentActionParser(ActionParser):
                 raise Exception('Option --search_id must be defined')
 
             return SearchAction(self.args.search_id)
-        elif self.args.action == 'run':
-            return RunAction()
+        elif self.args.action == 'run_search':
+            return RunSearchAction()
         else:
             raise Exception('Wrong Command')
 
