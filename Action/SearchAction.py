@@ -41,6 +41,7 @@ class SearchAction(Action):
 
         except Exception as e:
             print(e)
+            statistics.wait = True
             return statistics
 
     def update_search(self, statistics):

@@ -13,5 +13,4 @@ if __name__ == '__main__':
 
     action_parser = ArgumentActionParser()
     action = action_parser.parse()
-    print(action.execute())
-    print(mongo_db.find_twitts_count())
+    action.execute()
