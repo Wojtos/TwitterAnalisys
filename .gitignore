@@ -2,3 +2,5 @@ venv
 .env
 .idea
 local.log
+__pycache__/
+backups/

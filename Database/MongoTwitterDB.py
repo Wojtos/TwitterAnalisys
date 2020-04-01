@@ -11,6 +11,7 @@ class MongoTwitterDB(TwitterDB):
     def __init__(self):
         self.client = pymongo.MongoClient(os.getenv("MONGO_DB_HOST"))
         self.db = self.client.twitter
+        self.create_database()
 
     def test_connection(self):
         try:
@@ -21,6 +22,7 @@ class MongoTwitterDB(TwitterDB):
 
     def create_database(self):
         self.db.twitts.create_index('id', unique=True)
+        self.db.searches.create_index('query', unique=True)
 
     def add_twitt(self, twitt):
         self.db.twitts.insert_one(twitt)
@@ -42,7 +44,7 @@ class MongoTwitterDB(TwitterDB):
             {
                 '$set': {
                     'until': search.until,
-                    'self.since_id': search.since_id
+                    'since_id': search.since_id
                 }
             }
         )
@@ -81,3 +83,7 @@ class MongoTwitterDB(TwitterDB):
                  {"$sort": {"max_userfollowers_count": -1}}
             ]))
         return best_twitterers
+
+    def search_exist_by_query(self, query):
+        return False if self.db.searches.find_one({'query': query}) is None else True
+

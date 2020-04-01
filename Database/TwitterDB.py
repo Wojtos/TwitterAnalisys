@@ -2,7 +2,7 @@ class TwitterDB:
     instance = None
 
     def test_connection(self):
-        pass
+        return False
 
     def create_database(self):
         pass
@@ -11,10 +11,10 @@ class TwitterDB:
         pass
 
     def find_twitts_count(self):
-        pass
+        return None
 
-    def find_twitts_exist(self, twitt_id):
-        pass
+    def twitt_exists(self, twitt_id):
+        return False
 
     def add_search(self, search):
         pass
@@ -23,7 +23,17 @@ class TwitterDB:
         pass
 
     def find_one_search(self, search_id):
-        pass
+        return None
 
     def find_all_searches(self):
-        pass
+        return []
+
+    def get_tweets_by_username(self, username):
+        return []
+
+    def get_all_users(self):
+        return []
+
+    def search_exist_by_query(self, query):
+        return False
+
