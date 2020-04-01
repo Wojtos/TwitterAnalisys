@@ -3,6 +3,7 @@ from datetime import datetime, date, timedelta
 
 from Action.ActionParser import ActionParser
 from Action.AddSearchAction import AddSearchAction
+from Action.AnalyseTweetsAction import AnalyseTweetsAction
 from Action.RunSearchAction import RunSearchAction
 from Action.SearchAction import SearchAction
 
@@ -41,6 +42,8 @@ class ArgumentActionParser(ActionParser):
             return SearchAction(self.args.search_id)
         elif self.args.action == 'run_search':
             return RunSearchAction()
+        elif self.args.action == 'analyse':
+            return AnalyseTweetsAction()
         else:
             raise Exception('Wrong Command')
 

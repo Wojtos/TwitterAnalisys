@@ -56,3 +56,28 @@ class MongoTwitterDB(TwitterDB):
     def find_all_searches(self):
         fetched_searches = self.db.searches.find()
         return [Search(**fetched_search) for fetched_search in fetched_searches]
+
+    def get_all_tweets(self):
+        fetched_tweets = self.db.twitts.find()
+        return list(fetched_tweets)
+
+    def get_tweets_by_username(self, username):
+        fetched_tweets = self.db.twitts.find({ "user.name": username})
+        return list(fetched_tweets)
+
+    def get_all_users(self):
+        best_twitterers = list(self.db.twitts.aggregate(
+            [
+                {"$group":
+                      {
+                          "_id": {"userid": "$user.id"},
+                          "username": {"$max": "$user.screen_name"},
+                          "max_userfollowers_count": {"$max": "$user.followers_count"},
+                          "avg_favorite": {"$avg": "$favorite_count"},
+                          "avg_retweet": {"$avg": "$retweet_count"},
+                          "tweet_count": {"$sum": 1}
+                      }
+                },
+                 {"$sort": {"max_userfollowers_count": -1}}
+            ]))
+        return best_twitterers
