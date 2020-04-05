@@ -23,7 +23,7 @@ class SearchAction(Action):
     def do(self):
         twitter_search = AuthenticatedTwitterSearch()
         twitter_search_order = self.search.create_twitter_search_order()
-        statistics = SearchStatistics(self.search.until.date())
+        statistics = SearchStatistics(self.search)
 
         try:
             while True:
