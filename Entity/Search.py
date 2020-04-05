@@ -1,10 +1,12 @@
+import datetime
+
 from TwitterSearchHelpers.ExtendedTwitterSearchOrder import ExtendedTwitterSearchOrder
 
 
 class Search:
     def __init__(self, query, until, since_id, lang, _id=None):
         self.query = query
-        self.until = until
+        self.until = until.date() if isinstance(until, datetime.datetime) else until
         self.since_id = since_id
         self.lang = lang
         if _id is not None:

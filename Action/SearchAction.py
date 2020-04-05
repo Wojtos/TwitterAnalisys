@@ -3,10 +3,10 @@ from datetime import date, timedelta, datetime
 from TwitterSearch import TwitterSearchException
 
 from Action.Action import Action
-from TwitterSearchHelpers.AuthenticatedTwitterSearch import AuthenticatedTwitterSearch
 from Database.TwitterDB import TwitterDB
 from Entity.Search import Search
 from TwitterSearchHelpers.SearchStatistics import SearchStatistics
+from TwitterSearchIterator.TwitterSearchSwitchableIterator import TwitterSearchSwitchableIterator
 
 
 class SearchAction(Action):
@@ -17,34 +17,27 @@ class SearchAction(Action):
 
     def execute(self):
         statistics = self.do()
-        self.update_search(statistics)
+        self.update_search()
         return statistics
 
     def do(self):
-        twitter_search = AuthenticatedTwitterSearch()
-        twitter_search_order = self.search.create_twitter_search_order()
-        statistics = SearchStatistics(self.search)
+        twitter_search_iterator = TwitterSearchSwitchableIterator(self.search)
+        statistics = SearchStatistics()
 
         try:
-            while True:
-                twitter_search_order.set_until(statistics.until)
-                for tweet in twitter_search.search_tweets_iterable(twitter_search_order):
-                    if not self.db.twitt_exists(tweet['id']):
-                        self.db.add_twitt(tweet)
-                        statistics.saved_entites_amount += 1
-                    statistics.fetched_entites_amount += 1
-                    statistics.since_id = tweet['id']
-                if statistics.until == date.today():
-                    return statistics
-                statistics.until = statistics.until + timedelta(days=1)
-                print(statistics.until)
+            for tweet in twitter_search_iterator:
+                if not self.db.twitt_exists(tweet['id']):
+                    self.db.add_twitt(tweet)
+                    statistics.saved_entites_amount += 1
+                statistics.fetched_entites_amount += 1
+                self.search.since_id = tweet['id']
+            self.search.until = datetime.now().date()
+            return statistics
 
         except Exception as e:
             print(e)
             statistics.wait = True
             return statistics
 
-    def update_search(self, statistics):
-        self.search.since_id = statistics.since_id
-        self.search.until = datetime.combine(statistics.until, datetime.min.time())
+    def update_search(self):
         self.db.update_search(self.search)
