@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pymongo as pymongo
 from bson import ObjectId
 
@@ -34,6 +36,7 @@ class MongoTwitterDB(TwitterDB):
         return False if self.db.twitts.find_one({'id': twitt_id}) is None else True
 
     def add_search(self, search):
+        search.until = datetime.combine(search.until, datetime.min.time())
         self.db.searches.insert_one(search.__dict__)
 
     def update_search(self, search):
@@ -43,7 +46,7 @@ class MongoTwitterDB(TwitterDB):
             {'_id': search._id},
             {
                 '$set': {
-                    'until': search.until,
+                    'until': datetime.combine(search.until, datetime.min.time()),
                     'since_id': search.since_id
                 }
             }
