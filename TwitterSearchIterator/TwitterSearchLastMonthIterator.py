@@ -5,6 +5,7 @@ import searchtweets
 
 class TwitterSearchLastMonthIterator(TwitterSearchIterator):
     def __init__(self, search_query):
+        print(self.__class__.__name__)
         self.premium_search_args = searchtweets.load_credentials()
         self.rule = searchtweets.gen_rule_payload(
             search_query.query,

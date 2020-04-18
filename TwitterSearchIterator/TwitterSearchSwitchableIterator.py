@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 
 from TwitterSearchIterator.TwitterSearchIterator import TwitterSearchIterator
-import searchtweets
 
 from TwitterSearchIterator.TwitterSearchLastMonthIterator import TwitterSearchLastMonthIterator
 from TwitterSearchIterator.TwitterSearchLastWeekIterator import TwitterSearchLastWeekIterator
@@ -26,7 +25,6 @@ class TwitterSearchSwitchableIterator(TwitterSearchIterator):
             except StopIteration:
                 self.search_query.until = self.week_ago
         if self.last_week_iterator is None:
-            self.search_query.until = self.week_ago
             self.last_week_iterator = TwitterSearchLastWeekIterator(self.search_query)
         return next(self.last_week_iterator)
 
