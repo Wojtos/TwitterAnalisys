@@ -66,24 +66,39 @@ class MongoTwitterDB(TwitterDB):
         fetched_tweets = self.db.twitts.find()
         return list(fetched_tweets)
 
-    def get_tweets_by_username(self, username):
-        fetched_tweets = self.db.twitts.find({ "user.name": username})
+    def get_tweets_by_user_screen_name(self, username):
+        fetched_tweets = self.db.twitts.aggregate(
+            [
+                {"$match":
+                     {"$and": [
+                         {"user.screen_name": username},
+                         {"retweeted_status": {"$exists": False}}
+                     ]}
+                },
+                {"$sort": {"created_at": 1}}
+            ]
+        )
         return list(fetched_tweets)
 
     def get_all_users(self):
         best_twitterers = list(self.db.twitts.aggregate(
             [
+                {"$match": {"retweeted_status": {"$exists": False}}},
                 {"$group":
                       {
                           "_id": {"userid": "$user.id"},
+                          "name": {"$max": "$user.name"},
                           "username": {"$max": "$user.screen_name"},
                           "max_userfollowers_count": {"$max": "$user.followers_count"},
                           "avg_favorite": {"$avg": "$favorite_count"},
                           "avg_retweet": {"$avg": "$retweet_count"},
+                          "sum_favorite": {"$sum": "$favorite_count"},
+                          "sum_retweet": {"$sum": "$retweet_count"},
                           "tweet_count": {"$sum": 1}
                       }
                 },
-                 {"$sort": {"max_userfollowers_count": -1}}
+                {"$match": {"tweet_count": {"$gte": 2}}},
+                {"$sort": {"max_userfollowers_count": -1}}
             ]))
         return best_twitterers
 
