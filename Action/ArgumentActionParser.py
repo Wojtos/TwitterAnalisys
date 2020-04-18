@@ -5,6 +5,7 @@ from Action.ActionParser import ActionParser
 from Action.AddSearchAction import AddSearchAction
 from Action.AddSearchFileAction import AddSearchFileAction
 from Action.AnalyseTweetsAction import AnalyseTweetsAction
+from Action.ResetSearchesDateAction import ResetSearchesDateAction
 from Action.RunSearchAction import RunSearchAction
 from Action.SearchAction import SearchAction
 
@@ -58,6 +59,11 @@ class ArgumentActionParser(ActionParser):
             return RunSearchAction()
         elif self.args.action == 'analyse':
             return AnalyseTweetsAction()
+        elif self.args.action == 'reset_searches_date':
+            return ResetSearchesDateAction(
+                until=self.args.until,
+                since_id=self.args.since_id
+            )
         else:
             raise Exception('Wrong Command')
 

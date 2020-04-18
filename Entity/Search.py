@@ -18,6 +18,7 @@ class Search:
         twitter_search_order.set_language(self.lang)
         twitter_search_order.set_include_entities(False)
         twitter_search_order.set_result_type('recent')
+        twitter_search_order.set_until(self.until)
         if self.since_id is not None:
             twitter_search_order.set_since_id(self.since_id)
         return twitter_search_order

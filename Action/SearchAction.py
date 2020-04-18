@@ -31,7 +31,9 @@ class SearchAction(Action):
                     statistics.saved_entites_amount += 1
                 statistics.fetched_entites_amount += 1
                 self.search.since_id = tweet['id']
-            self.search.until = datetime.now().date()
+            if self.search.until < date.today():
+                self.search.until = self.search.until + timedelta(days=1)
+            print(self.search.until)
             return statistics
 
         except Exception as e:
