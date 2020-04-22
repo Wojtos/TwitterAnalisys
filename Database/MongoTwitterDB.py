@@ -89,7 +89,7 @@ class MongoTwitterDB(TwitterDB):
                           "_id": {"userid": "$user.id"},
                           "name": {"$max": "$user.name"},
                           "username": {"$max": "$user.screen_name"},
-                          "max_userfollowers_count": {"$max": "$user.followers_count"},
+                          "max_followers_count": {"$max": "$user.followers_count"},
                           "avg_favorite": {"$avg": "$favorite_count"},
                           "avg_retweet": {"$avg": "$retweet_count"},
                           "sum_favorite": {"$sum": "$favorite_count"},
@@ -98,7 +98,15 @@ class MongoTwitterDB(TwitterDB):
                       }
                 },
                 {"$match": {"tweet_count": {"$gte": 2}}},
-                {"$sort": {"max_userfollowers_count": -1}}
+                {"$sort": {"max_followers_count": -1}},
+                {"$lookup":
+                    {
+                        "from": "users",
+                        "localField": "_id.userid",
+                        "foreignField": "id",
+                        "as": "aliasForUsersCollection"
+                    }
+                }
             ]))
         return best_twitterers
 
