@@ -80,7 +80,7 @@ class MongoTwitterDB(TwitterDB):
         )
         return list(fetched_tweets)
 
-    def get_all_users(self):
+    def get_user_metrics(self, threshold=2, favorite_weight=1, retweet_weight=5):
         best_twitterers = list(self.db.twitts.aggregate(
             [
                 {"$match": {"retweeted_status": {"$exists": False}}},
@@ -97,7 +97,9 @@ class MongoTwitterDB(TwitterDB):
                           "tweet_count": {"$sum": 1}
                       }
                 },
-                {"$match": {"tweet_count": {"$gte": 2}}},
+                {"$addFields": {"weighed_sum": {"$add": [{"$multiply": ["$sum_retweet", retweet_weight]}, {"$multiply": ["$sum_favorite", favorite_weight]}]}}},
+                {"$addFields": {"weighed_sum_with_cost": {"$divide": ["$weighed_sum", "$tweet_count"]}}},
+                {"$match": {"tweet_count": {"$gte": threshold}}},
                 {"$sort": {"max_followers_count": -1}},
                 {"$lookup":
                     {
