@@ -70,34 +70,63 @@ class MongoTwitterDB(TwitterDB):
         fetched_tweets = self.db.twitts.aggregate(
             [
                 {"$match":
-                     {"$and": [
-                         {"user.screen_name": username},
-                         {"retweeted_status": {"$exists": False}}
-                     ]}
+                    {"$and": [
+                        {"user.screen_name": username},
+                        {"retweeted_status": {"$exists": False}}
+                    ]}
                 },
                 {"$sort": {"created_at": 1}}
             ]
         )
         return list(fetched_tweets)
 
+    def get_user_retweets_mapped_by_userid(self):
+        user_retweets = list(self.db.twitts.aggregate(
+            [
+                {"$group":
+                    {
+                        "_id": {
+                            "userid": "$retweeted_status.user.id",
+                            "retweeted_userid": "$user.id"
+                        },
+                        "retweet_count": {"$sum": 1}
+                    }
+                },
+                {"$group":
+                    {
+                        "_id": {
+                            "userid": "$_id.userid",
+                        },
+                        "unique_retweet_count": {"$sum": 1},
+                        "retweet_count": {"$sum": "$retweet_count"},
+                    }
+                },
+
+            ],
+            allowDiskUse=True
+        ))
+        return dict([(user_retweet["_id"]['userid'], {"retweet_count": user_retweet["retweet_count"], "unique_retweet_count": user_retweet["unique_retweet_count"]})
+                     for user_retweet in user_retweets])
+
     def get_user_metrics(self, threshold=2, favorite_weight=1, retweet_weight=5):
         best_twitterers = list(self.db.twitts.aggregate(
             [
                 {"$match": {"retweeted_status": {"$exists": False}}},
                 {"$group":
-                      {
-                          "_id": {"userid": "$user.id"},
-                          "name": {"$max": "$user.name"},
-                          "username": {"$max": "$user.screen_name"},
-                          "max_followers_count": {"$max": "$user.followers_count"},
-                          "avg_favorite": {"$avg": "$favorite_count"},
-                          "avg_retweet": {"$avg": "$retweet_count"},
-                          "sum_favorite": {"$sum": "$favorite_count"},
-                          "sum_retweet": {"$sum": "$retweet_count"},
-                          "tweet_count": {"$sum": 1}
-                      }
+                    {
+                        "_id": {"userid": "$user.id"},
+                        "name": {"$max": "$user.name"},
+                        "username": {"$max": "$user.screen_name"},
+                        "max_followers_count": {"$max": "$user.followers_count"},
+                        "avg_favorite": {"$avg": "$favorite_count"},
+                        "avg_retweet": {"$avg": "$retweet_count"},
+                        "sum_favorite": {"$sum": "$favorite_count"},
+                        "sum_retweet": {"$sum": "$retweet_count"},
+                        "tweet_count": {"$sum": 1},
+                    }
                 },
-                {"$addFields": {"weighed_sum": {"$add": [{"$multiply": ["$sum_retweet", retweet_weight]}, {"$multiply": ["$sum_favorite", favorite_weight]}]}}},
+                {"$addFields": {"weighed_sum": {"$add": [{"$multiply": ["$sum_retweet", retweet_weight]},
+                                                         {"$multiply": ["$sum_favorite", favorite_weight]}]}}},
                 {"$addFields": {"weighed_sum_with_cost": {"$divide": ["$weighed_sum", "$tweet_count"]}}},
                 {"$match": {"tweet_count": {"$gte": threshold}}},
                 {"$sort": {"max_followers_count": -1}},
@@ -110,8 +139,18 @@ class MongoTwitterDB(TwitterDB):
                     }
                 }
             ]))
+
+        user_retweet_mapped_by_userid = self.get_user_retweets_mapped_by_userid()
+        best_twitterers = list(map(
+            lambda user: dict(
+                **user,
+                **(user_retweet_mapped_by_userid[user["_id"]['userid']] if
+                   user["_id"]['userid'] in user_retweet_mapped_by_userid else
+                   {'retweet_count': 0, 'unique_retweet_count': 0})
+            ),
+            best_twitterers
+        ))
         return best_twitterers
 
     def search_exist_by_query(self, query):
         return False if self.db.searches.find_one({'query': query}) is None else True
-
