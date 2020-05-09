@@ -128,6 +128,7 @@ class MongoTwitterDB(TwitterDB):
                 {"$addFields": {"weighed_sum": {"$add": [{"$multiply": ["$sum_retweet", retweet_weight]},
                                                          {"$multiply": ["$sum_favorite", favorite_weight]}]}}},
                 {"$addFields": {"weighed_sum_with_cost": {"$divide": ["$weighed_sum", "$tweet_count"]}}},
+                #{"$addFields": {"sum_vs_divided": {"$divide": ["$weighed_sum", "$tweet_count"]}}},
                 {"$match": {"tweet_count": {"$gte": threshold}}},
                 {"$sort": {"max_followers_count": -1}},
                 {"$lookup":
@@ -137,7 +138,9 @@ class MongoTwitterDB(TwitterDB):
                         "foreignField": "id",
                         "as": "aliasForUsersCollection"
                     }
-                }
+                },
+                {"$match": {"aliasForUsersCollection.category": {"$ne": "x"}}},
+                {"$match": {"aliasForUsersCollection.category": {"$ne": "x"}}}
             ]))
 
         user_retweet_mapped_by_userid = self.get_user_retweets_mapped_by_userid()
