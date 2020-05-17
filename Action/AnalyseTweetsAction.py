@@ -7,6 +7,8 @@ import seaborn as sn
 import math
 import networkx as nx
 
+from Entity.User import User
+
 
 class AnalyseTweetsAction(Action):
     def __init__(self):
@@ -44,7 +46,7 @@ class AnalyseTweetsAction(Action):
         plt.clf()
 
     def get_retweets_graph_metrics_by_userid(self):
-        user_retweet_edges = self.db.get_retweets_graph_edges(threshold=10)
+        user_retweet_edges = self.db.get_retweets_graph_edges(threshold=1)
         G = nx.Graph()
         for retweet_node in user_retweet_edges:
             for retweet_edge in retweet_node['data']:
@@ -53,7 +55,12 @@ class AnalyseTweetsAction(Action):
                     retweet_edge['retweeting_userid'],
                     weight=1/retweet_edge['retweet_count']
                 )
-        print(len(G))
+        print(f'Liczba krawędzi: {nx.number_of_edges(G)}')
+        print(f'Liczba wierzchołków: {nx.number_of_nodes(G)}')
+        # print(f'Radius: {nx.radius(G)}')
+        # print(f'Diameter: {nx.diameter(G)}')
+        # print(f'Average shortest path: {nx.average_shortest_path_length(G)}')
+        # print(f'k_components: {nx.k_components(G)}')
         closeness_centrality = nx.closeness_centrality(G)
         betweenness_centrality = nx.betweenness_centrality(G)
         pagerank = nx.pagerank(G)
@@ -73,7 +80,7 @@ class AnalyseTweetsAction(Action):
 
     def print_metrics(self, metric_keys, metric_lists, limit=50):
         with open('results.txt', 'w', encoding="utf-8") as f:
-            self.print_line(f, ['nr\tid\tscreen_name\tname\tcategory\tsubcategory\tcomment\tmetric score\tfollowers\ttweets\toccurences on other lists'])
+            self.print_line(f, ['nr\tid\tscreen_name\tname\tcategory\tsubcategory\tcomment\tlabel\tmetric score\tfollowers\ttweets\toccurences on other lists'])
             for i, (key, metric_list) in enumerate(zip(metric_keys, metric_lists)):
                 self.print_line(f, [key])
                 self.print_metric_stats(metric_list, key, f)
@@ -86,7 +93,9 @@ class AnalyseTweetsAction(Action):
                         self.print_line(f, [user['aliasForUsersCollection'][0]['category']], end='\t')
                         self.print_line(f, [user['aliasForUsersCollection'][0]['subcategory']], end='\t')
                         self.print_line(f, [user['aliasForUsersCollection'][0]['comment']], end='\t')
+                        self.print_line(f, [user['aliasForUsersCollection'][0]['label']], end='\t')
                     else:
+                        self.print_line(f, ['?'], end='\t')
                         self.print_line(f, ['?'], end='\t')
                         self.print_line(f, ['?'], end='\t')
                         self.print_line(f, ['?'], end='\t')
@@ -168,3 +177,36 @@ class AnalyseTweetsAction(Action):
 
         self.correlations(metric_keys, user_metrics)
         self.print_metrics(metric_keys, metric_lists, limit)
+        self.save_users(metric_keys, user_metrics)
+
+    def save_users(self, metric_keys, user_metrics):
+        metrics_max_values = {}
+        for metric_key in metric_keys:
+            metrics_max_values[metric_key] = max(map(
+                lambda metric: metric[metric_key] if metric_key in metric else 0,
+                user_metrics
+            ))
+        print(metrics_max_values)
+        for j, metric in enumerate(user_metrics):
+            metrics = {}
+            for metric_key in metric_keys:
+                metric_value = metric[metric_key]
+                normalized_metric_value = metric_value / metrics_max_values[metric_key]
+                metrics[metric_key] = normalized_metric_value
+            if metric['aliasForUsersCollection']:
+                earlier_user = metric['aliasForUsersCollection'][0]
+                user = User(
+                    id=earlier_user['id'],
+                    screen_name=earlier_user['screen_name'],
+                    label=earlier_user['label'],
+                    metrics=metrics,
+                )
+            else:
+                user = User(
+                    id=metric['_id']['userid'],
+                    screen_name=metric['username'],
+                    metrics=metrics
+                )
+            self.db.save_user(user)
+
+

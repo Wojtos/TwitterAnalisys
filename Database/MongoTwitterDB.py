@@ -7,6 +7,7 @@ from Database.TwitterDB import TwitterDB
 import os
 
 from Entity.Search import Search
+from Entity.User import User
 
 
 class MongoTwitterDB(TwitterDB):
@@ -227,3 +228,37 @@ class MongoTwitterDB(TwitterDB):
             ],
             allowDiskUse=True
         ))
+
+    def save_user(self, user):
+        if self.exist_user(user.id):
+            self.update_user(user)
+        else:
+            self.add_user(user)
+
+    def add_user(self, user):
+        self.db.users.insert_one(user.__dict__)
+
+    def exist_user(self, user_id):
+        return False if self.db.users.find_one({'id': user_id}) is None else True
+
+    def find_user(self, user_id):
+        return User(*self.db.users.find_one({'id': user_id}))
+
+    def update_user(self, user):
+        self.db.users.update_one(
+            {'id': user.id},
+            {
+                '$set': user.__dict__,
+            },
+            upsert=True
+        )
+
+    def find_all_users(self):
+        fetched_users = self.db.users.find()
+        return [User(**fetched_user) for fetched_user in fetched_users]
+
+    def find_all_users_with_metrics(self, minimum_tweet_count_metric=0):
+        fetched_users = self.db.users.find(
+            {"metrics.tweet_count": {"$gte": minimum_tweet_count_metric}},
+        )
+        return [User(**fetched_user) for fetched_user in fetched_users]
