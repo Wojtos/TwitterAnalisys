@@ -7,6 +7,7 @@ from Database.TwitterDB import TwitterDB
 import os
 
 from Entity.Search import Search
+from Entity.User import User
 
 
 class MongoTwitterDB(TwitterDB):
@@ -131,6 +132,13 @@ class MongoTwitterDB(TwitterDB):
                 {"$addFields": {"weighed_sum": {"$add": [{"$multiply": ["$sum_retweet", retweet_weight]},
                                                          {"$multiply": ["$sum_favorite", favorite_weight]}]}}},
                 {"$addFields": {"weighed_sum_with_cost": {"$divide": ["$weighed_sum", "$tweet_count"]}}},
+                {"$addFields": {"avg_favorite_to_followers_count": {
+                    "$cond": [{ "$eq": ["$max_followers_count", 0] }, 0, {"$divide": ["$avg_favorite", "$max_followers_count"]}]
+                }}},
+                {"$addFields": {"avg_retweet_to_followers_count": {
+                    "$cond": [{"$eq": ["$max_followers_count", 0]}, 0,
+                              {"$divide": ["$avg_retweet", "$max_followers_count"]}]
+                }}},
                 #{"$addFields": {"sum_vs_divided": {"$divide": ["$weighed_sum", "$tweet_count"]}}},
                 {"$match": {"tweet_count": {"$gte": threshold}}},
                 {"$sort": {"max_followers_count": -1}},
@@ -174,3 +182,83 @@ class MongoTwitterDB(TwitterDB):
 
     def search_exist_by_query(self, query):
         return False if self.db.searches.find_one({'query': query}) is None else True
+
+    def get_retweets_graph_edges(self, threshold=10):
+        return list(self.db.twitts.aggregate(
+            [
+                {"$group":
+                    {
+                        "_id": {
+                            "userid": "$retweeted_status.user.id",
+                            "retweeting_userid": "$user.id"
+                        },
+                        "name": {"$max": "$retweeted_status.user.name"},
+                        "username": {"$max": "$retweeted_status.user.screen_name"},
+                        "retweeting_name": {"$max": "$user.name"},
+                        "retweeting_username": {"$max": "$user.screen_name"},
+                        "retweet_count": {"$sum": 1}
+                    }
+                },
+                {"$match": {"_id.userid": {"$ne": "$data.retweeting_userid"}}},
+                {"$match": {"retweet_count": {"$gte": threshold}}},
+                {"$group": {
+                    "_id": {
+                        "userid": "$_id.userid",
+                    },
+                    "data": {"$push":
+                         {
+                             "retweeting_userid": "$_id.retweeting_userid",
+                             "retweet_count": "$retweet_count",
+                             "retweeting_name": {"$max": "$retweeting_name"},
+                             "retweeting_username": {"$max": "$retweeting_username"},
+                         }},
+                    "name": {"$max": "$name"},
+                    "username": {"$max": "$username"},
+                }},
+                {"$sort": {"retweet_count": -1}},
+                {"$lookup":
+                    {
+                        "from": "users",
+                        "localField": "_id.userid",
+                        "foreignField": "id",
+                        "as": "aliasForUsersCollection"
+                    }
+                },
+
+            ],
+            allowDiskUse=True
+        ))
+
+    def save_user(self, user):
+        if self.exist_user(user.id):
+            self.update_user(user)
+        else:
+            self.add_user(user)
+
+    def add_user(self, user):
+        self.db.users.insert_one(user.__dict__)
+
+    def exist_user(self, user_id):
+        return False if self.db.users.find_one({'id': user_id}) is None else True
+
+    def find_user(self, user_id):
+        return User(*self.db.users.find_one({'id': user_id}))
+
+    def update_user(self, user):
+        self.db.users.update_one(
+            {'id': user.id},
+            {
+                '$set': user.__dict__,
+            },
+            upsert=True
+        )
+
+    def find_all_users(self):
+        fetched_users = self.db.users.find()
+        return [User(**fetched_user) for fetched_user in fetched_users]
+
+    def find_all_users_with_metrics(self, minimum_tweet_count_metric=0):
+        fetched_users = self.db.users.find(
+            {"metrics.tweet_count": {"$gte": minimum_tweet_count_metric}},
+        )
+        return [User(**fetched_user) for fetched_user in fetched_users]

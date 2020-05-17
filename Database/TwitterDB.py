@@ -37,3 +37,25 @@ class TwitterDB:
     def search_exist_by_query(self, query):
         return False
 
+    def get_retweets_graph_edges(self, threshold=10):
+        return []
+
+    def save_user(self, user):
+        pass
+
+    def add_user(self, user):
+        pass
+
+    def exist_user(self, user_id):
+        return False
+
+    def update_user(self, user):
+        pass
+
+    def find_all_users(self):
+        return []
+
+    def find_all_users_with_metrics(self):
+        return []
+
+

@@ -5,6 +5,7 @@ from Action.ActionParser import ActionParser
 from Action.AddSearchAction import AddSearchAction
 from Action.AddSearchFileAction import AddSearchFileAction
 from Action.AnalyseTweetsAction import AnalyseTweetsAction
+from Action.ClusterAction import ClusterAction
 from Action.ResetSearchesDateAction import ResetSearchesDateAction
 from Action.RunSearchAction import RunSearchAction
 from Action.SearchAction import SearchAction
@@ -64,6 +65,8 @@ class ArgumentActionParser(ActionParser):
                 until=self.args.until,
                 since_id=self.args.since_id
             )
+        elif self.args.action == 'cluster':
+            return ClusterAction()
         else:
             raise Exception('Wrong Command')
 

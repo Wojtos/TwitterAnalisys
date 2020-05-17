@@ -5,6 +5,9 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import seaborn as sn
 import math
+import networkx as nx
+
+from Entity.User import User
 
 
 class AnalyseTweetsAction(Action):
@@ -42,9 +45,42 @@ class AnalyseTweetsAction(Action):
         plt.savefig(key+'_quantile_bar.png')
         plt.clf()
 
+    def get_retweets_graph_metrics_by_userid(self):
+        user_retweet_edges = self.db.get_retweets_graph_edges(threshold=1)
+        G = nx.Graph()
+        for retweet_node in user_retweet_edges:
+            for retweet_edge in retweet_node['data']:
+                G.add_edge(
+                    retweet_node['_id']['userid'],
+                    retweet_edge['retweeting_userid'],
+                    weight=1/retweet_edge['retweet_count']
+                )
+        print(f'Liczba krawędzi: {nx.number_of_edges(G)}')
+        print(f'Liczba wierzchołków: {nx.number_of_nodes(G)}')
+        # print(f'Radius: {nx.radius(G)}')
+        # print(f'Diameter: {nx.diameter(G)}')
+        # print(f'Average shortest path: {nx.average_shortest_path_length(G)}')
+        # print(f'k_components: {nx.k_components(G)}')
+        closeness_centrality = nx.closeness_centrality(G)
+        betweenness_centrality = nx.betweenness_centrality(G)
+        pagerank = nx.pagerank(G)
+        for user_retweet_edge in user_retweet_edges:
+            user_retweet_edge['closeness_centrality'] = closeness_centrality[user_retweet_edge['_id']['userid']]
+            user_retweet_edge['betweenness_centrality'] = betweenness_centrality[user_retweet_edge['_id']['userid']]
+            user_retweet_edge['pagerank'] = pagerank[user_retweet_edge['_id']['userid']]
+        return dict([(
+            retweet_edge['_id']['userid'],
+            {
+                'closeness_centrality': retweet_edge['closeness_centrality'],
+                'betweenness_centrality': retweet_edge['betweenness_centrality'],
+                'pagerank': retweet_edge['pagerank'],
+            }
+        ) for retweet_edge in user_retweet_edges])
+
+
     def print_metrics(self, metric_keys, metric_lists, limit=50):
         with open('results.txt', 'w', encoding="utf-8") as f:
-            self.print_line(f, ['nr\tid\tscreen_name\tname\tcategory\tsubcategory\tcomment\tmetric score\tfollowers\ttweets\toccurences on other lists'])
+            self.print_line(f, ['nr\tid\tscreen_name\tname\tcategory\tsubcategory\tcomment\tlabel\tmetric score\tfollowers\ttweets\toccurences on other lists'])
             for i, (key, metric_list) in enumerate(zip(metric_keys, metric_lists)):
                 self.print_line(f, [key])
                 self.print_metric_stats(metric_list, key, f)
@@ -57,7 +93,9 @@ class AnalyseTweetsAction(Action):
                         self.print_line(f, [user['aliasForUsersCollection'][0]['category']], end='\t')
                         self.print_line(f, [user['aliasForUsersCollection'][0]['subcategory']], end='\t')
                         self.print_line(f, [user['aliasForUsersCollection'][0]['comment']], end='\t')
+                        self.print_line(f, [user['aliasForUsersCollection'][0]['label']], end='\t')
                     else:
+                        self.print_line(f, ['?'], end='\t')
                         self.print_line(f, ['?'], end='\t')
                         self.print_line(f, ['?'], end='\t')
                         self.print_line(f, ['?'], end='\t')
@@ -94,6 +132,20 @@ class AnalyseTweetsAction(Action):
         for u in by_user:
             u = self.calc_user_medians(u)
         print('Number of users:', len(by_user))
+        user_metrics = self.db.get_user_metrics(6, 1, 5)
+        retweet_metrics_by_userid = self.get_retweets_graph_metrics_by_userid()
+        for user_metric in user_metrics:
+            userid = user_metric['_id']['userid']
+            user_edge = retweet_metrics_by_userid[userid] if userid in retweet_metrics_by_userid else None
+            if user_edge:
+                user_metric['closeness_centrality'] = user_edge['closeness_centrality']
+                user_metric['betweenness_centrality'] = user_edge['betweenness_centrality']
+                user_metric['pagerank'] = user_edge['pagerank']
+            else:
+                user_metric['closeness_centrality'] = 0
+                user_metric['betweenness_centrality'] = 0
+                user_metric['pagerank'] = 0
+        print('Number of users:', len(user_metrics))
 
         limit = 50
 
@@ -110,12 +162,51 @@ class AnalyseTweetsAction(Action):
             'med_retweet',
             'unique_retweet_count',
             'max_following_count'
+            'unique_retweet_count',
+            'avg_favorite_to_followers_count',
+            'avg_retweet_to_followers_count',
+            'closeness_centrality',
+            'betweenness_centrality',
+            'pagerank'
         ]
         metric_lists = []
         for key in metric_keys:
             # self.print_metric_stats(by_user, key)
-            metric_lists.append(sorted(by_user, key=lambda i: i[key], reverse=True))
+            metric_lists.append(sorted(user_metrics, key=lambda i: i[key], reverse=True))
             # print('Prepared metric:', key)
 
-        self.correlations(metric_keys, by_user)
+        self.correlations(metric_keys, user_metrics)
         self.print_metrics(metric_keys, metric_lists, limit)
+        self.save_users(metric_keys, user_metrics)
+
+    def save_users(self, metric_keys, user_metrics):
+        metrics_max_values = {}
+        for metric_key in metric_keys:
+            metrics_max_values[metric_key] = max(map(
+                lambda metric: metric[metric_key] if metric_key in metric else 0,
+                user_metrics
+            ))
+        print(metrics_max_values)
+        for j, metric in enumerate(user_metrics):
+            metrics = {}
+            for metric_key in metric_keys:
+                metric_value = metric[metric_key]
+                normalized_metric_value = metric_value / metrics_max_values[metric_key]
+                metrics[metric_key] = normalized_metric_value
+            if metric['aliasForUsersCollection']:
+                earlier_user = metric['aliasForUsersCollection'][0]
+                user = User(
+                    id=earlier_user['id'],
+                    screen_name=earlier_user['screen_name'],
+                    label=earlier_user['label'],
+                    metrics=metrics,
+                )
+            else:
+                user = User(
+                    id=metric['_id']['userid'],
+                    screen_name=metric['username'],
+                    metrics=metrics
+                )
+            self.db.save_user(user)
+
+
