@@ -4,6 +4,7 @@ import statistics
 from matplotlib import pyplot as plt
 import pandas as pd
 import seaborn as sn
+import math
 
 
 class AnalyseTweetsAction(Action):
@@ -71,8 +72,27 @@ class AnalyseTweetsAction(Action):
                     self.print_line(f, [''])
                 self.print_line(f, [''])
 
+
+    def calc_user_medians(self, user_data):
+        favorite_values = sorted(user_data['favorite_values'])
+        retweet_values = sorted(user_data['retweet_values'])
+        lower_index = math.floor((len(favorite_values)-1)/2)
+        upper_index = math.ceil((len(favorite_values)-1)/2)
+        favorite_median = (favorite_values[lower_index]+favorite_values[upper_index])/2
+        retweet_median = (retweet_values[lower_index]+retweet_values[upper_index])/2
+        user_data['med_favorite'] = favorite_median
+        user_data['med_retweet'] = retweet_median
+        if user_data['avg_favorite']==0:
+            user_data['med_to_avg_fav_ratio'] = 0
+        else:
+            user_data['med_to_avg_fav_ratio'] = favorite_median/user_data['avg_favorite']
+        return user_data
+
+
     def execute(self):
         by_user = self.db.get_user_metrics(6, 1, 5)
+        for u in by_user:
+            u = self.calc_user_medians(u)
         print('Number of users:', len(by_user))
 
         limit = 50
@@ -86,7 +106,10 @@ class AnalyseTweetsAction(Action):
             'sum_retweet',
             'weighed_sum',
             'weighed_sum_with_cost',
-            'unique_retweet_count'
+            'med_favorite',
+            'med_retweet',
+            'unique_retweet_count',
+            'max_following_count'
         ]
         metric_lists = []
         for key in metric_keys:

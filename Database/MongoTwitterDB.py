@@ -118,11 +118,14 @@ class MongoTwitterDB(TwitterDB):
                         "name": {"$max": "$user.name"},
                         "username": {"$max": "$user.screen_name"},
                         "max_followers_count": {"$max": "$user.followers_count"},
+                        "max_following_count": {"$max": "$user.friends_count"},
                         "avg_favorite": {"$avg": "$favorite_count"},
                         "avg_retweet": {"$avg": "$retweet_count"},
                         "sum_favorite": {"$sum": "$favorite_count"},
                         "sum_retweet": {"$sum": "$retweet_count"},
                         "tweet_count": {"$sum": 1},
+                        "favorite_values": {"$push": "$favorite_count"},
+                        "retweet_values": {"$push": "$retweet_count"}
                     }
                 },
                 {"$addFields": {"weighed_sum": {"$add": [{"$multiply": ["$sum_retweet", retweet_weight]},
@@ -154,6 +157,20 @@ class MongoTwitterDB(TwitterDB):
             best_twitterers
         ))
         return best_twitterers
+
+    def get_user_median(self, uid):
+        best_twitterers = list(self.db.twitts.aggregate(
+            [
+                {"$match": {"retweeted_status": {"$exists": False}}},
+                {"$group":
+                             {
+                                 "_id": {"userid": "$user.id"},
+                                 "count": {"$sum": 1},
+                                 "values": {"$push": "$favorite_count"}
+                             }
+                         }
+            ]))
+        return list(best_twitterers)
 
     def search_exist_by_query(self, query):
         return False if self.db.searches.find_one({'query': query}) is None else True
