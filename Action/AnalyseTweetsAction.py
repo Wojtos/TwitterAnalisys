@@ -46,7 +46,7 @@ class AnalyseTweetsAction(Action):
         plt.clf()
 
     def get_retweets_graph_metrics_by_userid(self):
-        user_retweet_edges = self.db.get_retweets_graph_edges(threshold=1)
+        user_retweet_edges = self.db.get_retweets_graph_edges(threshold=10)
         G = nx.Graph()
         for retweet_node in user_retweet_edges:
             for retweet_edge in retweet_node['data']:
@@ -61,6 +61,7 @@ class AnalyseTweetsAction(Action):
         # print(f'Diameter: {nx.diameter(G)}')
         # print(f'Average shortest path: {nx.average_shortest_path_length(G)}')
         # print(f'k_components: {nx.k_components(G)}')
+        print(f'number_connected_components: {nx.number_connected_components(G)}')
         closeness_centrality = nx.closeness_centrality(G)
         betweenness_centrality = nx.betweenness_centrality(G)
         pagerank = nx.pagerank(G)
@@ -90,10 +91,11 @@ class AnalyseTweetsAction(Action):
                     self.print_line(f, [user['username']], end='\t')
                     self.print_line(f, [user['name']], end='\t')
                     if len(user['aliasForUsersCollection'])>0:
-                        self.print_line(f, [user['aliasForUsersCollection'][0]['category']], end='\t')
-                        self.print_line(f, [user['aliasForUsersCollection'][0]['subcategory']], end='\t')
-                        self.print_line(f, [user['aliasForUsersCollection'][0]['comment']], end='\t')
-                        self.print_line(f, [user['aliasForUsersCollection'][0]['label']], end='\t')
+                        userData = user['aliasForUsersCollection'][0]
+                        self.print_line(f, [userData['category'] if 'category' in userData else '?'], end='\t')
+                        self.print_line(f, [userData['subcategory'] if 'subcategory' in userData else '?'], end='\t')
+                        self.print_line(f, [userData['comment'] if 'comment' in userData else '?'], end='\t')
+                        self.print_line(f, [userData['label'] if 'label' in userData else '?'], end='\t')
                     else:
                         self.print_line(f, ['?'], end='\t')
                         self.print_line(f, ['?'], end='\t')
@@ -128,11 +130,9 @@ class AnalyseTweetsAction(Action):
 
 
     def execute(self):
-        by_user = self.db.get_user_metrics(6, 1, 5)
-        for u in by_user:
-            u = self.calc_user_medians(u)
-        print('Number of users:', len(by_user))
         user_metrics = self.db.get_user_metrics(6, 1, 5)
+        print('Number of users:', len(user_metrics))
+        user_metrics = list(map(self.calc_user_medians, user_metrics))
         retweet_metrics_by_userid = self.get_retweets_graph_metrics_by_userid()
         for user_metric in user_metrics:
             userid = user_metric['_id']['userid']
@@ -145,7 +145,6 @@ class AnalyseTweetsAction(Action):
                 user_metric['closeness_centrality'] = 0
                 user_metric['betweenness_centrality'] = 0
                 user_metric['pagerank'] = 0
-        print('Number of users:', len(user_metrics))
 
         limit = 50
 
@@ -161,7 +160,7 @@ class AnalyseTweetsAction(Action):
             'med_favorite',
             'med_retweet',
             'unique_retweet_count',
-            'max_following_count'
+            'max_following_count',
             'unique_retweet_count',
             'avg_favorite_to_followers_count',
             'avg_retweet_to_followers_count',
@@ -195,12 +194,8 @@ class AnalyseTweetsAction(Action):
                 metrics[metric_key] = normalized_metric_value
             if metric['aliasForUsersCollection']:
                 earlier_user = metric['aliasForUsersCollection'][0]
-                user = User(
-                    id=earlier_user['id'],
-                    screen_name=earlier_user['screen_name'],
-                    label=earlier_user['label'],
-                    metrics=metrics,
-                )
+                user = self.db.find_user(earlier_user['id'])
+                user.metrics = metrics
             else:
                 user = User(
                     id=metric['_id']['userid'],
