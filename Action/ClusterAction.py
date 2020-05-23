@@ -21,7 +21,9 @@ class ClusterAction(Action):
         'red',
         'blue',
         'green',
-        # 'black'
+        'black',
+        'yellow',
+        'pink'
     ]
 
     def __init__(self):

@@ -242,7 +242,7 @@ class MongoTwitterDB(TwitterDB):
         return False if self.db.users.find_one({'id': user_id}) is None else True
 
     def find_user(self, user_id):
-        return User(*self.db.users.find_one({'id': user_id}))
+        return User(**self.db.users.find_one({'id': user_id}))
 
     def update_user(self, user):
         self.db.users.update_one(
