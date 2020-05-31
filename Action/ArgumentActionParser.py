@@ -8,6 +8,7 @@ from Action.AnalyseTweetsAction import AnalyseTweetsAction
 from Action.ClusterAction import ClusterAction
 from Action.ResetSearchesDateAction import ResetSearchesDateAction
 from Action.RunSearchAction import RunSearchAction
+from Action.SaveReportsAction import SaveReportsAction
 from Action.SearchAction import SearchAction
 
 
@@ -67,6 +68,8 @@ class ArgumentActionParser(ActionParser):
             )
         elif self.args.action == 'cluster':
             return ClusterAction()
+        elif self.args.action == 'save_reports':
+            return SaveReportsAction()
         else:
             raise Exception('Wrong Command')
 
