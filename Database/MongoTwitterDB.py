@@ -152,7 +152,9 @@ class MongoTwitterDB(TwitterDB):
                 },
                 {"$match": {"aliasForUsersCollection.category": {"$ne": "x"}}},
                 {"$match": {"aliasForUsersCollection.category": {"$ne": "x"}}}
-            ]))
+            ],
+            allowDiskUse=True
+        ))
 
         user_retweet_mapped_by_userid = self.get_user_retweets_mapped_by_userid()
         best_twitterers = list(map(
@@ -199,8 +201,17 @@ class MongoTwitterDB(TwitterDB):
                         "retweet_count": {"$sum": 1}
                     }
                 },
-                {"$match": {"_id.userid": {"$ne": "$data.retweeting_userid"}}},
+                {"$match": {"_id.userid": {"$ne": "_id.retweeting_userid"}}},
                 {"$match": {"retweet_count": {"$gte": threshold}}},
+                {"$lookup":
+                    {
+                        "from": "users",
+                        "localField": "_id.retweeting_userid",
+                        "foreignField": "id",
+                        "as": "aliasForRetweetingUsersCollection"
+                    }
+                },
+                {"$match": {"aliasForRetweetingUsersCollection._id": {"$exists": True}}},
                 {"$group": {
                     "_id": {
                         "userid": "$_id.userid",
@@ -224,6 +235,7 @@ class MongoTwitterDB(TwitterDB):
                         "as": "aliasForUsersCollection"
                     }
                 },
+                {"$match": {"aliasForUsersCollection._id": {"$exists": True}}},
 
             ],
             allowDiskUse=True
@@ -254,7 +266,9 @@ class MongoTwitterDB(TwitterDB):
         )
 
     def find_all_users(self):
-        fetched_users = self.db.users.find()
+        fetched_users = self.db.users.find(
+            {"metrics_order": {"$exists": True}},
+        )
         return [User(**fetched_user) for fetched_user in fetched_users]
 
     def find_all_users_with_metrics(self, minimum_tweet_count_metric=0):
