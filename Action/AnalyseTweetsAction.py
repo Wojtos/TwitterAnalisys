@@ -7,7 +7,16 @@ from Entity.User import User
 
 
 class AnalyseTweetsAction(Action):
-    METRIC_KEYS = [
+    GRAPH_METRIC_KEYS = [
+        'closeness_centrality',
+        'betweenness_centrality',
+        'pagerank',
+        'input_edges_count',
+        'retweet_count',
+        'unique_retweet_count',
+
+    ]
+    NON_GRAPH_METRIC_KEYS = [
         'max_followers_count',
         'tweet_count',
         'avg_favorite',
@@ -18,31 +27,31 @@ class AnalyseTweetsAction(Action):
         'weighed_sum_with_cost',
         'med_favorite',
         'med_retweet',
-        'unique_retweet_count',
         'max_following_count',
-        'unique_retweet_count',
-        'avg_favorite_to_followers_count',
-        'avg_retweet_to_followers_count',
-        'closeness_centrality',
-        'betweenness_centrality',
-        'pagerank',
-        'input_edges_count'
+        'input_edges_count_with_minimum_5_retweets',
+        'input_edges_count_with_minimum_10_retweets',
     ]
+    METRIC_KEYS = GRAPH_METRIC_KEYS + NON_GRAPH_METRIC_KEYS
 
     def __init__(self):
         self.db = TwitterDB.instance
-        pass
 
     def get_retweets_graph_metrics_by_userid(self):
         user_retweet_nodes = self.db.get_retweets_graph_edges(threshold=1)
         G = nx.Graph()
         for retweet_node in user_retweet_nodes:
+            retweet_node['input_edges_count_with_minimum_5_retweets'] = 0
+            retweet_node['input_edges_count_with_minimum_10_retweets'] = 0
             for retweet_edge in retweet_node['data']:
                 G.add_edge(
                     retweet_node['_id']['userid'],
                     retweet_edge['retweeting_userid'],
                     weight=1/retweet_edge['retweet_count']
                 )
+                if retweet_edge['retweet_count'] >= 5:
+                    retweet_node['input_edges_count_with_minimum_5_retweets'] += 1
+                if retweet_edge['retweet_count'] >= 10:
+                    retweet_node['input_edges_count_with_minimum_10_retweets'] += 1
 
         print(f'Liczba krawędzi: {nx.number_of_edges(G)}')
         print(f'Liczba wierzchołków: {nx.number_of_nodes(G)}')
@@ -74,6 +83,8 @@ class AnalyseTweetsAction(Action):
                 'pagerank': retweet_node['pagerank'],
                 'input_edges_count': retweet_node['input_edges_count'],
                 'output_edges_count': retweet_node['output_edges_count'],
+                'input_edges_count_with_minimum_5_retweets': retweet_node['input_edges_count_with_minimum_5_retweets'],
+                'input_edges_count_with_minimum_10_retweets': retweet_node['input_edges_count_with_minimum_10_retweets'],
             }
         ) for retweet_node in user_retweet_nodes])
 
@@ -87,7 +98,7 @@ class AnalyseTweetsAction(Action):
         retweet_median = (retweet_values[lower_index]+retweet_values[upper_index])/2
         user_data['med_favorite'] = favorite_median
         user_data['med_retweet'] = retweet_median
-        if user_data['avg_favorite']==0:
+        if user_data['avg_favorite'] == 0:
             user_data['med_to_avg_fav_ratio'] = 0
         else:
             user_data['med_to_avg_fav_ratio'] = favorite_median/user_data['avg_favorite']
@@ -108,19 +119,22 @@ class AnalyseTweetsAction(Action):
                 user_metric['pagerank'] = user_edge['pagerank']
                 user_metric['input_edges_count'] = user_edge['input_edges_count']
                 user_metric['output_edges_count'] = user_edge['output_edges_count']
+                user_metric['input_edges_count_with_minimum_5_retweets'] = user_edge['input_edges_count_with_minimum_5_retweets']
+                user_metric['input_edges_count_with_minimum_10_retweets'] = user_edge['input_edges_count_with_minimum_10_retweets']
             else:
                 user_metric['closeness_centrality'] = 0
                 user_metric['betweenness_centrality'] = 0
                 user_metric['pagerank'] = 0
                 user_metric['input_edges_count'] = 0
                 user_metric['output_edges_count'] = 0
+                user_metric['input_edges_count_with_minimum_5_retweets'] = 0
+                user_metric['input_edges_count_with_minimum_10_retweets'] = 0
 
         metric_lists = []
         for key in self.METRIC_KEYS:
             metric_lists.append(sorted(user_metrics, key=lambda i: i[key], reverse=True))
 
         self.save_users(self.METRIC_KEYS, metric_lists, user_metrics)
-
 
     def save_users(self, metric_keys, metric_lists, user_metrics):
         metrics_max_values = {}
