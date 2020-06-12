@@ -11,6 +11,8 @@ from Action.ResetSearchesDateAction import ResetSearchesDateAction
 from Action.RunSearchAction import RunSearchAction
 from Action.SaveReportsAction import SaveReportsAction
 from Action.SearchAction import SearchAction
+from Cluster.EMCluster import EMCluster
+from Cluster.KMeanCluster import KMeanCluster
 from TwitterAnalyseHelpers.TweetsDateSplit import TweetsDateSplit
 
 
@@ -30,6 +32,8 @@ class ArgumentActionParser(ActionParser):
         self.parser.add_argument('--search_id', type=str)
         self.parser.add_argument('--file', type=str)
         self.parser.add_argument('--period', type=str, default=None)
+        self.parser.add_argument('--method', type=str, default=None)
+        self.parser.add_argument('--amount', type=int, default=3)
         self.args = self.parser.parse_args()
 
     def parse(self):
@@ -80,7 +84,9 @@ class ArgumentActionParser(ActionParser):
                 since_id=self.args.since_id
             )
         elif self.args.action == 'cluster':
-            return ClusterAction()
+            clusters_amount = self.args.amount
+            cluster = EMCluster(clusters_amount) if self.args.method == 'em' else KMeanCluster(clusters_amount)
+            return ClusterAction(cluster)
         elif self.args.action == 'save_reports':
             return SaveReportsAction()
         else:

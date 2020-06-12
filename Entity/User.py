@@ -12,7 +12,7 @@ class User:
                  metrics_order=None,
                  date_split_metrics=None,
                  date_split_original_metrics=None,
-
+                 labels=None
              ):
         if metrics is None:
             metrics = {}
@@ -24,12 +24,15 @@ class User:
             date_split_metrics = {}
         if date_split_original_metrics is None:
             date_split_original_metrics = {}
+        if labels is None:
+            labels = {}
         self.id = id
         self.screen_name = screen_name
         self.category = category
         self.subcategory = subcategory
         self.comment = comment
         self.label = label
+        self.labels = labels
         self.metrics = metrics
         self.original_metrics = original_metrics
         self.metrics_order = metrics_order

@@ -39,7 +39,7 @@ class SaveReportsAction(Action):
 
     def print_metrics(self, metric_keys, metric_lists, limit=50):
         with open('results.txt', 'w', encoding="utf-8") as f:
-            self.print_line(f, ['nr\tid\tscreen_name\tcategory\tsubcategory\tcomment\tlabel\tmetric score\tfollowers\ttweets\toccurences on other lists'])
+            self.print_line(f, ['nr\tid\tscreen_name\tcategory\tsubcategory\tcomment\tlabel k-means\tlabel em\tmetric score\tfollowers\ttweets\toccurences on other lists'])
             for i, (key, metric_list) in enumerate(zip(metric_keys, metric_lists)):
                 self.print_line(f, [key])
                 self.print_metric_stats(metric_list, key, f)
@@ -50,7 +50,8 @@ class SaveReportsAction(Action):
                     self.print_line(f, [user.category if user.category is not None else '?'], end='\t')
                     self.print_line(f, [user.subcategory if user.subcategory is not None else '?'], end='\t')
                     self.print_line(f, [user.comment if user.comment is not None else '?'], end='\t')
-                    self.print_line(f, [user.label if user.label is not None else '?'], end='\t')
+                    self.print_line(f, [user.labels['KMeans'] if 'KMeans' in user.labels is not None else '?'], end='\t')
+                    self.print_line(f, [user.labels['GaussianMixture'] if 'GaussianMixture' in user.labels is not None else '?'], end='\t')
                     self.print_line(f, [user.original_metrics[key]], end='\t')
                     self.print_line(f, [user.original_metrics['max_followers_count']], end='\t')
                     self.print_line(f, [user.original_metrics['tweet_count']], end='\t')
