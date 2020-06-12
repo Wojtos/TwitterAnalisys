@@ -11,6 +11,8 @@ from Entity.User import User
 
 
 class MongoTwitterDB(TwitterDB):
+    TWEET_DATETIME_FORMAT = '%a %b %d %X %z %Y'
+
     def __init__(self):
         self.client = pymongo.MongoClient(os.getenv("MONGO_DB_HOST"))
         self.db = self.client.twitter
@@ -109,9 +111,26 @@ class MongoTwitterDB(TwitterDB):
         return dict([(user_retweet["_id"]['userid'], {"retweet_count": user_retweet["retweet_count"], "unique_retweet_count": user_retweet["unique_retweet_count"]})
                      for user_retweet in user_retweets])
 
-    def get_user_metrics(self, threshold=2, favorite_weight=1, retweet_weight=5):
+    def get_user_metrics(self, threshold=2, favorite_weight=1, retweet_weight=5, split_date=None):
+        include_only_split_date = [] if split_date is None else\
+            [
+                {"$addFields": {
+                    "date": {
+                        "$dateFromString": {"dateString": "$created_at"}
+                    }
+                }},
+                {"$match": {
+                    "date": {
+                        "$gte": split_date[0],
+                        "$lte": split_date[1]
+                    }
+                }}
+            ]
+        threshold = threshold if split_date is None else threshold
+
         best_twitterers = list(self.db.twitts.aggregate(
             [
+                *include_only_split_date,
                 {"$match": {"retweeted_status": {"$exists": False}}},
                 {"$group":
                     {
@@ -156,16 +175,17 @@ class MongoTwitterDB(TwitterDB):
             allowDiskUse=True
         ))
 
-        user_retweet_mapped_by_userid = self.get_user_retweets_mapped_by_userid()
-        best_twitterers = list(map(
-            lambda user: dict(
-                **user,
-                **(user_retweet_mapped_by_userid[user["_id"]['userid']] if
-                   user["_id"]['userid'] in user_retweet_mapped_by_userid else
-                   {'retweet_count': 0, 'unique_retweet_count': 0})
-            ),
-            best_twitterers
-        ))
+        if split_date is None:
+            user_retweet_mapped_by_userid = self.get_user_retweets_mapped_by_userid()
+            best_twitterers = list(map(
+                lambda user: dict(
+                    **user,
+                    **(user_retweet_mapped_by_userid[user["_id"]['userid']] if
+                       user["_id"]['userid'] in user_retweet_mapped_by_userid else
+                       {'retweet_count': 0, 'unique_retweet_count': 0})
+                ),
+                best_twitterers
+            ))
         return best_twitterers
 
     def get_user_median(self, uid):
@@ -276,3 +296,22 @@ class MongoTwitterDB(TwitterDB):
             {"metrics.tweet_count": {"$gte": minimum_tweet_count_metric}},
         )
         return [User(**fetched_user) for fetched_user in fetched_users]
+
+    def find_first_tweet_date(self):
+        tweet = self.db.twitts.find().sort('id', 1).limit(1)
+        return datetime.strptime(tweet[0]['created_at'], self.TWEET_DATETIME_FORMAT)
+
+    def find_last_tweet_date(self):
+        tweet = self.db.twitts.find().sort('id', -1).limit(1)
+        return datetime.strptime(tweet[0]['created_at'], self.TWEET_DATETIME_FORMAT)
+    #
+    # def get_user_metrics_splitted(self, split_dates, threshold=2, favorite_weight=1, retweet_weight=5):
+    #     user_metrics = {}
+    #     for split_date in split_dates:
+    #         for user_period_metric in self.get_user_metrics(threshold, favorite_weight, retweet_weight, split_date.split_date):
+    #             userid = user_period_metric['_id']['userid']
+    #             if userid not in user_metrics:
+    #                 user_metrics[userid] = {}
+    #             user_metrics[userid][split_date.name_date_splits] = user_period_metric
+    #
+    #     return user_period_metrics
