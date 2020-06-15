@@ -46,8 +46,9 @@ class ClusterAction(Action):
         'pink'
     ]
 
-    def __init__(self):
+    def __init__(self, cluster):
         self.db = TwitterDB.instance
+        self.cluster = cluster
 
     def execute(self):
         users = self.db.find_all_users()
@@ -100,10 +101,10 @@ class ClusterAction(Action):
         #    file.write('\n')
         #    file.write(str(means_n))
 
-        kmeans = KMeans(n_clusters=len(self.COLORS), verbose=1)
-        print('prediction')
-        labels = kmeans.fit_predict(user_metrics)
-        print('predicted')
+        #kmeans = KMeans(n_clusters=len(self.COLORS), verbose=1)
+        #print('prediction')
+        #labels = kmeans.fit_predict(user_metrics)
+        #print('predicted')
         #for user, label in zip(users, labels):
         #    user.label = int(label)
         #    self.db.save_user(user)
@@ -113,9 +114,16 @@ class ClusterAction(Action):
         #    if uweeks is not None:
         #        for uweek in uweeks:
         #            user_weeks.append((u, uweek))
-        labeled_users = list(zip(users, user_metrics, labels, user_original_metrics))
+
         #print(labeled_users[0])
         #print(labeled_users[0][0])
+        labels = self.cluster.fit(user_metrics)
+        labeled_users = list(zip(users, user_metrics, labels, user_original_metrics))
+        for user, label in zip(users, labels):
+            int_label = int(label)
+            user.label = int_label
+            user.labels[self.cluster.get_name()] = int_label
+            self.db.save_user(user)
 
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
@@ -132,7 +140,7 @@ class ClusterAction(Action):
         ax.set_xlabel(self.METRIC_KEYS_TO_CLUSTERING[0])
         ax.set_ylabel(self.METRIC_KEYS_TO_CLUSTERING[1])
         ax.set_zlabel(self.METRIC_KEYS_TO_CLUSTERING[2])
-        plt.savefig('cluster.png')
+        plt.savefig(f'cluster{self.cluster.get_name()}.png')
         print('plotted 3D')
 
         print('writing results to file')

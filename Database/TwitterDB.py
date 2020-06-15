@@ -58,4 +58,10 @@ class TwitterDB:
     def find_all_users_with_metrics(self):
         return []
 
+    def find_first_tweet_date(self):
+        return None
+
+    def find_last_tweet_date(self):
+        return None
+
 
