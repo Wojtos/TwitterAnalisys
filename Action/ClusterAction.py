@@ -12,7 +12,7 @@ from Database.TwitterDB import TwitterDB
 
 class ClusterAction(Action):
     METRIC_KEYS_TO_CLUSTERING = [
-         'tweet_count', 'med_retweet', 'sum_favorite', 'avg_retweet_to_followers_count'
+         'tweet_count', 'med_retweet', 'sum_favorite', #'avg_retweet_to_followers_count'
 
     ]
 

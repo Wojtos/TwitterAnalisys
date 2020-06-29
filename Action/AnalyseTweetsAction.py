@@ -14,7 +14,8 @@ class AnalyseTweetsAction(Action):
         'input_edges_count',
         'retweet_count',
         'unique_retweet_count',
-
+        'input_edges_count_with_minimum_5_retweets',
+        'input_edges_count_with_minimum_10_retweets'
     ]
     NON_GRAPH_METRIC_KEYS = [
         'max_followers_count',
@@ -28,8 +29,6 @@ class AnalyseTweetsAction(Action):
         'med_favorite',
         'med_retweet',
         'max_following_count',
-        'input_edges_count_with_minimum_5_retweets',
-        'input_edges_count_with_minimum_10_retweets',
     ]
     METRIC_KEYS = GRAPH_METRIC_KEYS + NON_GRAPH_METRIC_KEYS
 

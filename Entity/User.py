@@ -1,4 +1,32 @@
 class User:
+    unique_periods = [
+        '04.03.2020 - 11.03.2020',
+        '11.03.2020 - 18.03.2020',
+        '18.03.2020 - 25.03.2020',
+        '25.03.2020 - 01.04.2020',
+        '01.04.2020 - 08.04.2020',
+        '08.04.2020 - 15.04.2020',
+        '15.04.2020 - 22.04.2020',
+        '22.04.2020 - 29.04.2020',
+        '29.04.2020 - 06.05.2020',
+        '06.05.2020 - 13.05.2020',
+        '13.05.2020 - 20.05.2020',
+        '20.05.2020 - 27.05.2020',
+        '27.05.2020 - 03.06.2020'
+    ]
+    NON_GRAPH_METRIC_KEYS = [
+        'max_followers_count',
+        'tweet_count',
+        'avg_favorite',
+        'avg_retweet',
+        'sum_favorite',
+        'sum_retweet',
+        'weighed_sum',
+        'weighed_sum_with_cost',
+        'med_favorite',
+        'med_retweet',
+        'max_following_count',
+    ]
     def __init__(self,
                  id,
                  screen_name=None,
@@ -24,6 +52,13 @@ class User:
             date_split_metrics = {}
         if date_split_original_metrics is None:
             date_split_original_metrics = {}
+        if 'weeks' not in date_split_original_metrics:
+            date_split_original_metrics['weeks'] = {}
+        for period in self.unique_periods:
+            if period not in date_split_original_metrics['weeks']:
+                date_split_original_metrics['weeks'][period] = {}
+                for key in self.NON_GRAPH_METRIC_KEYS:
+                    date_split_original_metrics['weeks'][period][key] = 0
         if labels is None:
             labels = {}
         self.id = id
